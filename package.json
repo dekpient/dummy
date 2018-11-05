@@ -8,9 +8,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "ramda": "0.25.0",
     "react": "16.6.0-alpha.8af6728",
     "react-native": "0.57.4",
-    "react-native-contacts": "file:../react-native-contacts"
+    "react-native-contacts": "git@github.com:dekpient/react-native-contacts.git#a838bc0d",
+    "react-native-json-tree": "1.2.0",
+    "react-native-slowlog": "1.0.2"
   },
   "devDependencies": {
     "babel-jest": "23.6.0",

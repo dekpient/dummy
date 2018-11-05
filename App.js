@@ -26,6 +26,12 @@ const instructions = Platform.select({
 
 // datat1979
 
+// TODO
+// - Pretty list
+// - Semaphore
+// - Android
+// - Caching?
+
 type Props = {};
 
 type State = {

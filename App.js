@@ -7,11 +7,13 @@
  */
 
 import React, {Component} from 'react';
-import {NativeModules, NativeEventEmitter, Platform, StyleSheet, Text, View, TouchableOpacity, SectionList, ScrollView} from 'react-native';
+import {NativeModules, NativeEventEmitter, Platform, StyleSheet, Dimensions, Text, View, TouchableOpacity, SectionList, ScrollView} from 'react-native';
 
 import JSONTree from 'react-native-json-tree'
 import Contacts from 'react-native-contacts';
 import slowlog from 'react-native-slowlog';
+import { LargeList } from "react-native-largelist-v2";
+import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 import * as R from "ramda";
 
 const _Contacts = NativeModules.Contacts;
@@ -40,11 +42,44 @@ type State = {
 
 let subscription;
 
+const dataProvider = new DataProvider((r1, r2) => !R.equals(r1, r2));
+
 export default class App extends Component<Props, State> {
   constructor(props) {
     super(props);
     slowlog(this, /.*/, { verbose: true });
+
+
+    let { width } = Dimensions.get("window");
+
+    this._layoutProvider = new LayoutProvider(
+        index => index,
+        (type, dim) => {
+          dim.width = width;
+          dim.height = 20;
+        }
+    );
+
+    this._rowRenderer = this._rowRenderer.bind(this);
+
     this.state = { showRaw: false, showList: false, changed: false, changedData: null };
+    this._getContactsSync();
+  }
+
+  _generateArray(n) {
+      let arr = new Array(n);
+      for (let i = 0; i < n; i++) {
+          arr[i] = i;
+      }
+      return arr;
+  }
+
+  _rowRenderer(type, data) {
+      return (
+          <View style={styles.container}>
+              <Text>{data.givenName} {data.middleName} {data.familyName}</Text>
+          </View>
+      );
   }
 
   componentWillMount() {
@@ -60,14 +95,24 @@ export default class App extends Component<Props, State> {
   }
 
   render() {
-    const { contacts, showRaw, showList, changed, changedData, subscribed = false } = this.state;
+    const { contacts, showRaw, showList, showLargeList, changed, changedData, subscribed = false } = this.state;
     const transformToSection = R.pipe(
       R.groupBy(contact => Math.floor(parseInt(contact.middleName) / 10)),
       R.toPairs,
       R.map(([title, data]) => ({ title, data }))
     );
+    const transformToLargeList = R.pipe(
+      R.groupBy(contact => Math.floor(parseInt(contact.middleName) / 10)),
+      R.toPairs,
+      R.map(([title, data]) => ({ items: data }))
+    );
 
     const comp = this;
+    const provider = dataProvider.cloneWithRows(contacts || []);
+
+    return (
+      <RecyclerListView layoutProvider={this._layoutProvider} dataProvider={provider} rowRenderer={this._rowRenderer} />
+    )
 
     return (
       <View style={styles.container}>
@@ -85,10 +130,14 @@ export default class App extends Component<Props, State> {
           <Text style={{ fontWeight: "bold" }}>Toggle JSON</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.instructions} onPress={() => this.setState({ showList: !showList })}>
-          <Text style={{ fontWeight: "bold" }}>Toggle List</Text>
+          <Text style={{ fontWeight: "bold" }}>Toggle Section List</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.instructions} onPress={() => this.setState({ showLargeList: !showLargeList })}>
+          <Text style={{ fontWeight: "bold" }}>Toggle Large List</Text>
         </TouchableOpacity>
         <ScrollView contentContainerStyle={styles.contentContainer}>
           {showRaw && <JSONTree data={contacts} />}
+        </ScrollView>
           {showList && <SectionList
             renderItem={({item, index, section}) => <Text key={index}>{item.givenName}</Text>}
             renderSectionHeader={({section: {title}}) => (
@@ -97,9 +146,25 @@ export default class App extends Component<Props, State> {
             sections={transformToSection(contacts)}
             keyExtractor={(item, index) => item.middleName}
           />}
-        </ScrollView>
+          {showLargeList && <LargeList
+            style={styles.container}
+            data={transformToLargeList(contacts)}
+            heightForSection={() => 50}
+            renderSection={(section) => (
+              <View style={styles.section}><Text style={{fontWeight: 'bold'}}>{section}</Text></View>
+            )}
+            heightForIndexPath={() => 50}
+            renderIndexPath={({ section, row: item }) => (<View style={styles.section}><Text key={item.recordID}>{item.givenName}</Text></View>)}
+          />}
       </View>
     );
+  }
+
+  _getContactsSync() {
+    const comp = this;
+    Contacts.getAllWithoutPhotos((err, contacts) => {
+        comp.setState({ contacts: R.sortBy(R.prop("middleName"), contacts) });
+    });
   }
 
   async _getContacts() {
@@ -135,5 +200,24 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingVertical: 20,
     width: "100%"
+  },
+  section: {
+    flex: 1,
+    backgroundColor: "gray",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  row: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  line: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 1,
+    backgroundColor: "#EEE"
   }
 });

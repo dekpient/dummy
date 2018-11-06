@@ -12,7 +12,6 @@ import {NativeModules, NativeEventEmitter, Platform, StyleSheet, Dimensions, Tex
 import JSONTree from 'react-native-json-tree'
 import Contacts from 'react-native-contacts';
 import slowlog from 'react-native-slowlog';
-import { LargeList } from "react-native-largelist-v2";
 import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 import * as R from "ramda";
 
@@ -145,16 +144,6 @@ export default class App extends Component<Props, State> {
             )}
             sections={transformToSection(contacts)}
             keyExtractor={(item, index) => item.middleName}
-          />}
-          {showLargeList && <LargeList
-            style={styles.container}
-            data={transformToLargeList(contacts)}
-            heightForSection={() => 50}
-            renderSection={(section) => (
-              <View style={styles.section}><Text style={{fontWeight: 'bold'}}>{section}</Text></View>
-            )}
-            heightForIndexPath={() => 50}
-            renderIndexPath={({ section, row: item }) => (<View style={styles.section}><Text key={item.recordID}>{item.givenName}</Text></View>)}
           />}
       </View>
     );

@@ -11,6 +11,8 @@
     "ramda": "0.25.0",
     "react": "16.6.0-alpha.8af6728",
     "react-native": "0.57.4",
+    "react-native-alphabetlistview": "0.3.0",
+    "react-native-atoz-list": "1.0.3",
     "react-native-contacts": "git@github.com:dekpient/react-native-contacts.git#a838bc0d",
     "react-native-json-tree": "1.2.0",
     "react-native-slowlog": "1.0.2",

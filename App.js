@@ -7,18 +7,15 @@
  */
 
 import React, {Component} from 'react';
-import {NativeModules, NativeEventEmitter, Platform, StyleSheet, Dimensions, Text, View, TouchableOpacity, ListView, SectionList, ScrollView} from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform, StyleSheet, Dimensions, Text, View, Button, TouchableOpacity, SectionList, ScrollView } from 'react-native';
 
 import JSONTree from 'react-native-json-tree'
 import Contacts from 'react-native-contacts';
 import slowlog from 'react-native-slowlog';
-import { RecyclerListView, DataProvider, LayoutProvider } from "recyclerlistview";
 import * as R from "ramda";
+import ContactsWrapper from 'react-native-contacts-wrapper';
+import { ContactExample } from './ContactExample';
 import AtoZList from 'react-native-atoz-list';
-import AlphabetListView from 'react-native-alphabetlistview';
-
-let names = require('./names');
-names = R.groupBy((name) => name[0].toUpperCase(), names);
 
 const _Contacts = NativeModules.Contacts;
 const eventEmitter = new NativeEventEmitter(_Contacts);
@@ -32,76 +29,13 @@ const instructions = Platform.select({
 
 // datat1979
 
-// TODO
-// - Pretty list
-// - Semaphore
-// - Android
-// - Caching?
-
-type Props = {};
-
-type State = {
-  contacts: object
-};
-
 let subscription;
 
-class SectionHeader extends Component {
-  render() {
-    // inline styles used for brevity, use a stylesheet when possible
-    var textStyle = {
-      textAlign:'center',
-      color:'#fff',
-      fontWeight:'700',
-      fontSize:16
-    };
-
-    var viewStyle = {
-      backgroundColor: '#ccc'
-    };
-    return (
-      <View style={viewStyle}>
-        <Text style={textStyle}>{this.props.title}</Text>
-      </View>
-    );
-  }
-}
-
-class SectionItem extends Component {
-  render() {
-    return (
-      <Text style={{color:'#f00'}}>{this.props.title}</Text>
-    );
-  }
-}
-
-class Cell extends Component {
-  render() {
-    return (
-      <View style={{height:30}}>
-        <Text>{this.props.item}</Text>
-      </View>
-    );
-  }
-}
-
-export default class App extends Component<Props, State> {
+export default class App extends Component {
   constructor(props) {
     super(props);
     slowlog(this, /.*/, { verbose: true });
 
-
-    let { width } = Dimensions.get("window");
-
-    this._layoutProvider = new LayoutProvider(
-        index => index,
-        (type, dim) => {
-          dim.width = width;
-          dim.height = 20;
-        }
-    );
-
-    this._rowRenderer = this._rowRenderer.bind(this);
     this._renderCell = this._renderCell.bind(this);
     this._renderHeader = this._renderHeader.bind(this);
 
@@ -125,22 +59,6 @@ export default class App extends Component<Props, State> {
       );
   }
 
-  _generateArray(n) {
-      let arr = new Array(n);
-      for (let i = 0; i < n; i++) {
-          arr[i] = i;
-      }
-      return arr;
-  }
-
-  _rowRenderer(type, data) {
-      return (
-          <View style={styles.container}>
-              <Text>{data.givenName} {data.middleName} {data.familyName}</Text>
-          </View>
-      );
-  }
-
   componentWillMount() {
     const comp = this;
     subscription = eventEmitter.addListener(
@@ -154,71 +72,57 @@ export default class App extends Component<Props, State> {
   }
 
   render() {
-    const { contacts, showRaw, showList, showLargeList, changed, changedData, subscribed = false } = this.state;
+    const { contacts, showRaw, showList, showLargeList, showAtoZList, changed, changedData, importedContact, subscribed = false } = this.state;
     const transformToSection = R.pipe(
       R.groupBy(contact => Math.floor(parseInt(contact.middleName) / 10)),
       R.toPairs,
       R.map(([title, data]) => ({ title, data }))
     );
-    const transformToLargeList = R.pipe(
-      R.groupBy(contact => Math.floor(parseInt(contact.middleName) / 10)),
-      R.toPairs,
-      R.map(([title, data]) => ({ items: data }))
-    );
 
     const _contacts = contacts || [];
     const comp = this;
-    const provider = new DataProvider((r1, r2) => !R.equals(r1, r2), (i) => _contacts[i].recordID).cloneWithRows(_contacts);
-    const ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => !R.equals(r1, r2) });
-    this.state = {
-      dataSource: ds.cloneWithRows(_contacts),
-    };
 
-    /*
+    if (showAtoZList) {
+      let names = require('./names');
+      names = R.groupBy((name) => name[0].toUpperCase(), names);
+      return (
+        <View style={styles.listContainer}>
+          <Button
+            style={styles.button}
+            onPress={() => this.setState({ showAtoZList: !showAtoZList })}
+            title="Hide A-to-Z List"
+            color="#222222"
+          />
+          <AtoZList
             incrementDelay={10}
             initialNumToRender={20}
             pageSize={Platform.OS === 'ios' ? 15 : 8}
             maxNumToRender={200}
             numToRenderAhead={100}
             numToRenderBehind={10}
-    */
-
-    if (showLargeList)
-      // return (
-      //   <AlphabetListView
-      //     data={names}
-      //     cell={Cell}
-      //     cellHeight={30}
-      //     sectionListItem={SectionItem}
-      //     sectionHeader={SectionHeader}
-      //     sectionHeaderHeight={22.5}
-      //   />
-      // );
-      return (
-          <AtoZList
-              sectionHeaderHeight={20}
-              cellHeight={40}
-              data={names}
-              renderCell={this._renderCell}
-              renderSection={this._renderHeader}
-              />
+            sectionHeaderHeight={20}
+            cellHeight={40}
+            data={names}
+            renderCell={this._renderCell}
+            renderSection={this._renderHeader}
+          />
+        </View>
       );
+    }
 
-      // return (
-      //   <ListView
-      //     dataSource={this.state.dataSource}
-      //     renderRow={(data) => <Text>{data.givenName} {data.middleName} {data.familyName}</Text>}
-      //   />
-      // );
-
-      // return (
-      //   <RecyclerListView
-      //     layoutProvider={this._layoutProvider}
-      //     dataProvider={provider}
-      //     rowRenderer={this._rowRenderer}
-      //     renderAheadOffset={20 * (_contacts.length / 2)}
-      //   />
-      // )
+    if (showLargeList) {
+      return (
+        <View style={styles.listContainer}>
+          <Button
+            style={styles.button}
+            onPress={() => this.setState({ showLargeList: !showLargeList })}
+            title="Hide Large List"
+            color="#222222"
+          />
+          <ContactExample native />
+        </View>
+      );
+    }
 
     return (
       <View style={styles.container}>
@@ -232,6 +136,10 @@ export default class App extends Component<Props, State> {
         <TouchableOpacity style={styles.instructions} onPress={this._getContacts.bind(this)}>
           <Text style={{ fontWeight: "bold" }}>Get Native Contacts</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.instructions} onPress={this._import.bind(this)}>
+          <Text style={{ fontWeight: "bold" }}>Import Contact</Text>
+          {importedContact && <JSONTree data={importedContact} />}
+        </TouchableOpacity>
         <TouchableOpacity style={styles.instructions} onPress={() => this.setState({ showRaw: !showRaw })}>
           <Text style={{ fontWeight: "bold" }}>Toggle JSON</Text>
         </TouchableOpacity>
@@ -239,7 +147,10 @@ export default class App extends Component<Props, State> {
           <Text style={{ fontWeight: "bold" }}>Toggle Section List</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.instructions} onPress={() => this.setState({ showLargeList: !showLargeList })}>
-          <Text style={{ fontWeight: "bold" }}>Toggle Large List</Text>
+          <Text style={{ fontWeight: "bold" }}>Load Large List</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.instructions} onPress={() => this.setState({ showAtoZList: !showAtoZList })}>
+          <Text style={{ fontWeight: "bold" }}>Load A-to-Z List</Text>
         </TouchableOpacity>
         <ScrollView contentContainerStyle={styles.contentContainer}>
           {showRaw && <JSONTree data={contacts} />}
@@ -258,6 +169,15 @@ export default class App extends Component<Props, State> {
         />}
       </View>
     );
+  }
+
+  async _import() {
+    try {
+      const importedContact = await ContactsWrapper.getContact();
+      this.setState({ importedContact });
+    } catch (e) {
+      this.setState({ importedContact: e.message });
+    }
   }
 
   _getContactsSync() {
@@ -281,6 +201,10 @@ export default class App extends Component<Props, State> {
 }
 
 const styles = StyleSheet.create({
+  listContainer: {
+    flex: 1,
+    width: Dimensions.get("window").width
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -301,75 +225,22 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     width: "100%"
   },
-  section: {
-    flex: 1,
-    backgroundColor: "gray",
-    justifyContent: "center",
-    alignItems: "center"
-  },
-  row: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center"
-  },
-  line: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 1,
-    backgroundColor: "#EEE"
-  },
-  swipeContainer: {
-  },
-  alphabetSidebar: {
-      position: 'absolute',
-      backgroundColor: 'transparent',
-      top: 0,
-      bottom: 0,
-      right: 0,
-      justifyContent: 'center',
-      alignItems: 'center',
-  },
-  placeholderCircle: {
-      width: 10,
-      height: 10,
-      backgroundColor: '#ccc',
-      borderRadius: 15,
-      marginRight: 10,
-      marginLeft: 5,
-  },
   name: {
-      fontSize: 15,
+    fontSize: 15,
+  },
+  button: {
+    width: 100,
+    padding: 0,
+    margin: 0,
+    fontWeight: "bold"
   },
   cell: {
-      height: 40,
-      borderBottomColor: '#ccc',
-      borderBottomWidth: 1,
-      backgroundColor: '#fff',
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingLeft: 20
+    height: 40,
+    borderBottomColor: '#ccc',
+    borderBottomWidth: 1,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 20
   },
 });
-
-// const styles = StyleSheet.create({
-//   container: {
-//    flex: 1,
-//    paddingTop: 22
-//   },
-//   sectionHeader: {
-//     paddingTop: 2,
-//     paddingLeft: 10,
-//     paddingRight: 10,
-//     paddingBottom: 2,
-//     fontSize: 14,
-//     fontWeight: 'bold',
-//     backgroundColor: 'rgba(247,247,247,1.0)',
-//   },
-//   item: {
-//     padding: 10,
-//     fontSize: 18,
-//     height: 44,
-//   },
-// });
